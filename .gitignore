@@ -1,0 +1,21 @@
+# Python & Environment
+venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# Large Model & Binary Files (> 100MB)
+models/
+pip_wheels/
+bin/lib/
+docker-images/
+*.tar.gz
+*.gguf
+
+# Runtime Data & Logs
+data/
+*.log
+*.pid
+
+# Environment Secrets
+.env

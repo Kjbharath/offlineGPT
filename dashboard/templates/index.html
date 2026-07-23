@@ -1,0 +1,1285 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OfflineGPT Admin Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-main: #0b0f17;
+      --bg-card: #131b2e;
+      --bg-card-hover: #1c2742;
+      --bg-input: #0a0e17;
+      --border-color: #23304d;
+      --primary: #3b82f6;
+      --primary-hover: #2563eb;
+      --accent-red: #ef4444;
+      --accent-green: #10b981;
+      --accent-yellow: #f59e0b;
+      --accent-purple: #8b5cf6;
+      --text-main: #f3f4f6;
+      --text-muted: #9ca3af;
+      --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: var(--font-sans);
+      background-color: var(--bg-main);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* --- OVERLAYS & MODALS --- */
+    #login-overlay, .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(11, 15, 23, 0.95);
+      backdrop-filter: blur(12px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+    }
+
+    .modal-overlay {
+      background: rgba(11, 15, 23, 0.85);
+      z-index: 9000;
+    }
+
+    .login-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 2.5rem;
+      width: 100%;
+      max-width: 400px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+      text-align: center;
+    }
+
+    .modal-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 2rem;
+      width: 92%;
+      max-width: 950px;
+      max-height: 85vh;
+      overflow-y: auto;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
+    }
+
+    .transcript-modal-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 2rem;
+      width: 94%;
+      max-width: 1000px;
+      max-height: 90vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+    }
+
+    /* --- CHAT DIALOGUE BUBBLES --- */
+    .transcript-container {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1rem;
+      background: #070a10;
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+      max-height: 60vh;
+    }
+
+    .chat-bubble {
+      padding: 1rem 1.25rem;
+      border-radius: 12px;
+      font-size: 0.92rem;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      word-break: break-word;
+      border: 1px solid var(--border-color);
+    }
+
+    .chat-bubble-user {
+      background: #172554;
+      border-color: rgba(59, 130, 246, 0.3);
+      align-self: flex-start;
+      width: 100%;
+    }
+
+    .chat-bubble-assistant {
+      background: #0f172a;
+      border-color: var(--border-color);
+      align-self: flex-start;
+      width: 100%;
+    }
+
+    .chat-role-label {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    .chat-role-user { color: #60a5fa; }
+    .chat-role-assistant { color: #a7f3d0; }
+
+    .form-group {
+      margin-bottom: 1.25rem;
+      text-align: left;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      margin-bottom: 0.375rem;
+    }
+
+    .form-control {
+      width: 100%;
+      background: var(--bg-input);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      font-family: inherit;
+      font-size: 0.95rem;
+      transition: all 0.2s;
+    }
+
+    .form-control:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0.75rem 1.25rem;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.875rem;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s;
+      gap: 0.5rem;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: #fff;
+      width: 100%;
+    }
+
+    .btn-primary:hover {
+      background: var(--primary-hover);
+    }
+
+    .btn-sm {
+      padding: 0.375rem 0.75rem;
+      font-size: 0.75rem;
+    }
+
+    .btn-danger {
+      background: rgba(239, 68, 68, 0.15);
+      color: var(--accent-red);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+    .btn-danger:hover {
+      background: var(--accent-red);
+      color: #fff;
+    }
+
+    .btn-warning {
+      background: rgba(245, 158, 11, 0.15);
+      color: var(--accent-yellow);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+    .btn-warning:hover {
+      background: var(--accent-yellow);
+      color: #000;
+    }
+
+    .btn-secondary {
+      background: var(--bg-card-hover);
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+    }
+    .btn-secondary:hover {
+      background: var(--border-color);
+    }
+
+    /* --- LAYOUT & HEADER --- */
+    header {
+      background: var(--bg-card);
+      border-bottom: 1px solid var(--border-color);
+      padding: 1rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .brand-logo {
+      width: 32px;
+      height: 32px;
+      background: linear-gradient(135deg, var(--primary), var(--accent-purple));
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      color: #fff;
+      font-size: 1.1rem;
+    }
+
+    .brand-title {
+      font-weight: 700;
+      font-size: 1.125rem;
+    }
+    .brand-badge {
+      background: rgba(59, 130, 246, 0.15);
+      color: var(--primary);
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      font-size: 0.7rem;
+      padding: 0.15rem 0.5rem;
+      border-radius: 9999px;
+      font-weight: 600;
+    }
+
+    /* --- NAV TABS --- */
+    .nav-tabs {
+      display: flex;
+      gap: 0.5rem;
+      background: var(--bg-main);
+      padding: 0.25rem;
+      border-radius: 10px;
+      border: 1px solid var(--border-color);
+    }
+
+    .nav-tab {
+      padding: 0.5rem 1rem;
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      border-radius: 7px;
+      cursor: pointer;
+      transition: all 0.2s;
+      user-select: none;
+    }
+
+    .nav-tab.active {
+      background: var(--bg-card);
+      color: var(--text-main);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+
+    /* --- MAIN CONTENT --- */
+    main {
+      flex: 1;
+      padding: 2rem;
+      max-width: 1400px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    .tab-content {
+      display: none;
+    }
+    .tab-content.active {
+      display: block;
+    }
+
+    /* --- GRID & CARDS --- */
+    .grid-5 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .grid-4 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1rem;
+    }
+
+    .card-title {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .card-value {
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: var(--text-main);
+      margin-bottom: 0.25rem;
+    }
+
+    .card-subtext {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    /* Progress bar */
+    .progress-bar {
+      height: 6px;
+      width: 100%;
+      background: var(--bg-input);
+      border-radius: 3px;
+      overflow: hidden;
+      margin-top: 0.75rem;
+    }
+    .progress-fill {
+      height: 100%;
+      background: var(--primary);
+      transition: width 0.3s ease;
+    }
+    .progress-fill.purple { background: var(--accent-purple); }
+
+    /* --- TABLES --- */
+    .table-container {
+      overflow-x: auto;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 0.875rem;
+    }
+
+    th {
+      background: rgba(255, 255, 255, 0.02);
+      color: var(--text-muted);
+      font-weight: 600;
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid var(--border-color);
+      font-size: 0.75rem;
+      text-transform: uppercase;
+    }
+
+    td {
+      padding: 0.85rem 1rem;
+      border-bottom: 1px solid var(--border-color);
+      color: var(--text-main);
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    tr:hover td {
+      background: rgba(255, 255, 255, 0.015);
+    }
+
+    /* Interactive User link */
+    .user-click-link {
+      color: var(--primary);
+      font-weight: 700;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+    .user-click-link:hover {
+      text-decoration: underline;
+      color: #60a5fa;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+    .badge-green { background: rgba(16, 185, 129, 0.15); color: var(--accent-green); border: 1px solid rgba(16, 185, 129, 0.3); }
+    .badge-red { background: rgba(239, 68, 68, 0.15); color: var(--accent-red); border: 1px solid rgba(239, 68, 68, 0.3); }
+    .badge-yellow { background: rgba(245, 158, 11, 0.15); color: var(--accent-yellow); border: 1px solid rgba(245, 158, 11, 0.3); }
+    .badge-blue { background: rgba(59, 130, 246, 0.15); color: var(--primary); border: 1px solid rgba(59, 130, 246, 0.3); }
+
+    /* --- LOG TERMINAL --- */
+    .terminal {
+      background: #05080e;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 1rem;
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      color: #a7f3d0;
+      height: 400px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      line-height: 1.5;
+    }
+
+    /* --- UTILS --- */
+    .flex-between { display: flex; align-items: center; justify-content: space-between; }
+    .text-mono { font-family: var(--font-mono); }
+    .mt-4 { margin-top: 1rem; }
+  </style>
+</head>
+<body>
+
+  <!-- LOGIN OVERLAY -->
+  <div id="login-overlay">
+    <div class="login-card">
+      <div class="brand-logo" style="margin: 0 auto 1rem; width: 48px; height: 48px; font-size: 1.5rem;">OG</div>
+      <h2>OfflineGPT Admin</h2>
+      <p>Enter the administrator password to access server controls.</p>
+      <form id="login-form">
+        <div class="form-group">
+          <label>Admin Password</label>
+          <input type="password" id="login-password" class="form-control" placeholder="••••••••" required autofocus />
+        </div>
+        <button type="submit" class="btn btn-primary">Unlock Dashboard</button>
+        <div id="login-error" style="color: var(--accent-red); font-size: 0.8rem; margin-top: 0.75rem; display: none;">Invalid password</div>
+      </form>
+    </div>
+  </div>
+
+  <!-- USER CONVERSATION HISTORY & FULL TOKEN INSPECTOR MODAL -->
+  <div id="user-modal-overlay" class="modal-overlay" style="display: none;">
+    <div class="modal-card">
+      <div class="flex-between" style="margin-bottom: 1.5rem; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem;">
+        <div>
+          <div style="display: flex; align-items: center; gap: 0.75rem;">
+            <h2 id="modal-user-name" style="font-size: 1.4rem;">User Inspector</h2>
+            <span id="modal-user-role" class="badge badge-green">user</span>
+          </div>
+          <p id="modal-user-email" style="font-size: 0.85rem; color: var(--text-muted);">user@example.com</p>
+        </div>
+        <button onclick="closeUserModal()" class="btn btn-secondary btn-sm">Close ✕</button>
+      </div>
+
+      <!-- DETAILED USER STATS CARDS -->
+      <div class="grid-4">
+        <div class="card" style="padding: 1rem;">
+          <span class="card-title">Overall Tokens Used</span>
+          <div class="card-value" style="color: var(--accent-purple);" id="modal-user-total-tokens">0k</div>
+        </div>
+        <div class="card" style="padding: 1rem;">
+          <span class="card-title">Prompt / Completion</span>
+          <div style="font-size: 0.95rem; font-family: var(--font-mono); font-weight: 600; margin-top: 0.5rem;" id="modal-user-pc-breakdown">
+            In: 0 | Out: 0
+          </div>
+        </div>
+        <div class="card" style="padding: 1rem;">
+          <span class="card-title">Total Conversations</span>
+          <div class="card-value" id="modal-user-total-chats">0</div>
+        </div>
+        <div class="card" style="padding: 1rem;">
+          <span class="card-title">Total Messages Sent</span>
+          <div class="card-value" id="modal-user-total-msgs">0</div>
+        </div>
+      </div>
+
+      <!-- PAST CONVERSATIONS TABLE -->
+      <h3 style="font-size: 1rem; font-weight: 600; margin: 1.25rem 0 0.75rem; color: var(--text-main);">Past Conversations & Context Memory Usage</h3>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Conversation Title & User Query</th>
+              <th>Date & Time</th>
+              <th>Messages</th>
+              <th>Context Memory Usage (Max 8.2k)</th>
+              <th>Full Transcript</th>
+            </tr>
+          </thead>
+          <tbody id="modal-chats-tbody">
+            <tr><td colspan="5">Loading conversations...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- FULL CHAT TRANSCRIPT MODAL -->
+  <div id="transcript-modal-overlay" class="modal-overlay" style="display: none; z-index: 9500;">
+    <div class="transcript-modal-card">
+      <div class="flex-between" style="margin-bottom: 1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.75rem;">
+        <div>
+          <h2 id="transcript-chat-title" style="font-size: 1.25rem;">Chat Transcript</h2>
+          <p id="transcript-chat-meta" style="font-size: 0.8rem; color: var(--text-muted);">User: -- | Messages: 0 | Total Tokens: 0</p>
+        </div>
+        <button onclick="closeTranscriptModal()" class="btn btn-secondary btn-sm">Close Transcript ✕</button>
+      </div>
+
+      <div class="transcript-container" id="transcript-messages-body">
+        <!-- Messages rendered here -->
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN HEADER -->
+  <header>
+    <div class="brand">
+      <div class="brand-logo">OG</div>
+      <div>
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+          <span class="brand-title">OfflineGPT</span>
+          <span class="brand-badge">ADMIN</span>
+        </div>
+        <div style="font-size: 0.75rem; color: var(--text-muted);" id="server-uptime">System Uptime: Loading...</div>
+      </div>
+    </div>
+
+    <!-- MERGED NAVIGATION TABS -->
+    <div class="nav-tabs">
+      <div class="nav-tab active" data-tab="tab-system">System Health</div>
+      <div class="nav-tab" data-tab="tab-containers">Containers</div>
+      <div class="nav-tab" data-tab="tab-users-analytics">Users & Analytics</div>
+      <div class="nav-tab" data-tab="tab-models">Models & Speed</div>
+      <div class="nav-tab" data-tab="tab-config">Settings</div>
+    </div>
+
+    <button id="logout-btn" class="btn btn-secondary btn-sm">Logout</button>
+  </header>
+
+  <!-- MAIN BODY CONTENT -->
+  <main>
+    
+    <!-- TAB 1: SYSTEM HEALTH -->
+    <div id="tab-system" class="tab-content active">
+      <div class="grid-4">
+        <!-- CPU CARD -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">CPU Utilization</span>
+            <span id="cpu-cores" class="card-subtext">-- Cores</span>
+          </div>
+          <div class="card-value" id="cpu-val">0%</div>
+          <div class="progress-bar"><div id="cpu-fill" class="progress-fill" style="width: 0%;"></div></div>
+        </div>
+
+        <!-- RAM CARD -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">RAM Usage</span>
+            <span id="ram-sub" class="card-subtext">0 GB / 0 GB</span>
+          </div>
+          <div class="card-value" id="ram-val">0%</div>
+          <div class="progress-bar"><div id="ram-fill" class="progress-fill" style="width: 0%;"></div></div>
+        </div>
+
+        <!-- DISK CARD -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Disk Storage</span>
+            <span id="disk-sub" class="card-subtext">0 GB / 0 GB</span>
+          </div>
+          <div class="card-value" id="disk-val">0%</div>
+          <div class="progress-bar"><div id="disk-fill" class="progress-fill" style="width: 0%;"></div></div>
+        </div>
+
+        <!-- GPU CARD -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">GPU VRAM</span>
+            <span id="gpu-name" class="card-subtext">NVIDIA GPU</span>
+          </div>
+          <div class="card-value" id="gpu-vram-val">0 / 0 MB</div>
+          <div class="progress-bar"><div id="gpu-vram-fill" class="progress-fill" style="width: 0%;"></div></div>
+        </div>
+      </div>
+
+      <!-- GPU DETAILED INFO CARD -->
+      <div class="card" id="gpu-details-card">
+        <div class="card-header">
+          <span class="card-title">GPU Performance Details</span>
+        </div>
+        <div id="gpu-list">Loading GPU telemetry...</div>
+      </div>
+    </div>
+
+    <!-- TAB 2: CONTAINER CONTROLS & LOGS -->
+    <div id="tab-containers" class="tab-content">
+      <div class="grid-2">
+        <!-- CONTAINERS LIST -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Docker Services</span>
+            <button onclick="fetchContainers()" class="btn btn-secondary btn-sm">Refresh</button>
+          </div>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Container Name</th>
+                  <th>Status</th>
+                  <th>Ports</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="containers-tbody">
+                <tr><td colspan="4">Loading services...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- LIVE LOG VIEWER -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Live Container Logs</span>
+            <select id="log-container-select" class="form-control" style="width: auto; padding: 0.25rem 0.5rem;">
+              <option value="">Select a container...</option>
+            </select>
+          </div>
+          <div class="terminal" id="log-terminal">Select a container above to stream real-time logs...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MERGED TAB: USERS & ANALYTICS -->
+    <div id="tab-users-analytics" class="tab-content">
+      <!-- SUMMARY STATS CARDS -->
+      <div class="grid-5">
+        <div class="card">
+          <span class="card-title">Total Registered Users</span>
+          <div class="card-value" id="sum-users">0</div>
+        </div>
+        <div class="card">
+          <span class="card-title">Active Users (24h)</span>
+          <div class="card-value" id="sum-active-users">0</div>
+        </div>
+        <div class="card">
+          <span class="card-title">Total Chats</span>
+          <div class="card-value" id="sum-chats">0</div>
+        </div>
+        <div class="card">
+          <span class="card-title">Total Messages</span>
+          <div class="card-value" id="sum-messages">0</div>
+        </div>
+        <div class="card">
+          <span class="card-title">Total Tokens Used</span>
+          <div class="card-value" style="color: var(--accent-purple);" id="sum-tokens">0k</div>
+        </div>
+      </div>
+
+      <!-- CLEAN MAIN USERS TABLE -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Registered User Directory</span>
+          <span style="font-size:0.75rem; color:var(--text-muted);">💡 Click any user's name to view past conversations and full token/context analytics</span>
+          <button onclick="fetchUsersAndAnalytics()" class="btn btn-secondary btn-sm">Refresh Stats</button>
+        </div>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>User Account (Click for Full Analytics 📊)</th>
+                <th>Role</th>
+                <th>Conversations</th>
+                <th>Overall Tokens</th>
+                <th>Last Active</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="users-analytics-tbody">
+              <tr><td colspan="6">Loading user directory...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: MODELS & TOKEN SPEED -->
+    <div id="tab-models" class="tab-content">
+      <div class="grid-2">
+        <!-- AVAILABLE MODELS -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Available AI Models</span>
+          </div>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Model Tag</th>
+                  <th>Size</th>
+                  <th>Quantization</th>
+                  <th>Format</th>
+                </tr>
+              </thead>
+              <tbody id="models-tbody">
+                <tr><td colspan="4">Loading models...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- TOKEN SPEED BENCHMARK CARD -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Token Speed & Latency Test</span>
+            <button onclick="runSpeedTest()" id="speed-test-btn" class="btn btn-primary btn-sm">Run Speed Test</button>
+          </div>
+          <div id="speed-test-results">
+            <p style="color: var(--text-muted); font-size: 0.9rem;">Click "Run Speed Test" to benchmark current GPU inference speed (tokens/sec) directly against the active model.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: CONFIG EDITOR -->
+    <div id="tab-config" class="tab-content">
+      <div class="card" style="max-width: 800px; margin: 0 auto;">
+        <div class="card-header">
+          <span class="card-title">System Environment Configuration (.env)</span>
+        </div>
+        <form id="config-form">
+          <div id="config-fields-container">Loading configuration...</div>
+          <div class="mt-4 flex-between">
+            <span style="font-size: 0.8rem; color: var(--text-muted);">Saving will update the `.env` file on disk.</span>
+            <button type="submit" class="btn btn-primary" style="width: auto;">Save & Apply Settings</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- JAVASCRIPT APP LOGIC -->
+  <script>
+    let logEventSource = null;
+    let currentModalUserChats = [];
+
+    // --- AUTH MANAGEMENT ---
+    async function checkAuth() {
+      try {
+        const res = await fetch('/api/auth/check');
+        if (res.ok) {
+          document.getElementById('login-overlay').style.display = 'none';
+          initDashboard();
+        } else {
+          document.getElementById('login-overlay').style.display = 'flex';
+        }
+      } catch (e) {
+        document.getElementById('login-overlay').style.display = 'flex';
+      }
+    }
+
+    document.getElementById('login-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const pwd = document.getElementById('login-password').value;
+      const errorDiv = document.getElementById('login-error');
+      errorDiv.style.display = 'none';
+
+      try {
+        const res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password: pwd })
+        });
+        if (res.ok) {
+          document.getElementById('login-overlay').style.display = 'none';
+          initDashboard();
+        } else {
+          errorDiv.style.display = 'block';
+        }
+      } catch (err) {
+        errorDiv.textContent = 'Server connection failed';
+        errorDiv.style.display = 'block';
+      }
+    });
+
+    document.getElementById('logout-btn').addEventListener('click', async () => {
+      await fetch('/api/auth/logout', { method: 'POST' });
+      window.location.reload();
+    });
+
+    // --- TABS SWITCHING ---
+    document.querySelectorAll('.nav-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        tab.classList.add('active');
+        const target = tab.getAttribute('data-tab');
+        document.getElementById(target).classList.add('active');
+      });
+    });
+
+    // --- INITIALIZE DASHBOARD ---
+    function initDashboard() {
+      fetchSystemStatus();
+      setInterval(fetchSystemStatus, 4000);
+      fetchContainers();
+      fetchUsersAndAnalytics();
+      fetchModels();
+      fetchConfig();
+    }
+
+    // --- SYSTEM STATUS ---
+    async function fetchSystemStatus() {
+      try {
+        const res = await fetch('/api/system');
+        if (!res.ok) return;
+        const data = await res.json();
+
+        // CPU
+        document.getElementById('cpu-val').textContent = `${data.cpu.percent}%`;
+        document.getElementById('cpu-fill').style.width = `${data.cpu.percent}%`;
+        document.getElementById('cpu-cores').textContent = `${data.cpu.count} Cores`;
+
+        // RAM
+        document.getElementById('ram-val').textContent = `${data.memory.percent}%`;
+        document.getElementById('ram-fill').style.width = `${data.memory.percent}%`;
+        document.getElementById('ram-sub').textContent = `${data.memory.used_gb} / ${data.memory.total_gb} GB`;
+
+        // DISK
+        document.getElementById('disk-val').textContent = `${data.disk.percent}%`;
+        document.getElementById('disk-fill').style.width = `${data.disk.percent}%`;
+        document.getElementById('disk-sub').textContent = `${data.disk.used_gb} / ${data.disk.total_gb} GB`;
+
+        // GPU
+        if (data.gpu && data.gpu.length > 0) {
+          const g = data.gpu[0];
+          const vramPct = Math.round((g.memory_used_mb / g.memory_total_mb) * 100);
+          document.getElementById('gpu-vram-val').textContent = `${Math.round(g.memory_used_mb)} / ${Math.round(g.memory_total_mb)} MB`;
+          document.getElementById('gpu-vram-fill').style.width = `${vramPct}%`;
+          document.getElementById('gpu-name').textContent = g.name;
+
+          document.getElementById('gpu-list').innerHTML = `
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;">
+              <div><strong>Core Temp:</strong> ${g.temperature} °C</div>
+              <div><strong>GPU Load:</strong> ${g.utilization} %</div>
+              <div><strong>Power Draw:</strong> ${g.power_draw_w ? g.power_draw_w + ' W' : 'N/A'}</div>
+            </div>
+          `;
+        } else {
+          document.getElementById('gpu-list').textContent = 'No NVIDIA GPU telemetry detected.';
+        }
+
+        // Uptime
+        const hrs = Math.floor(data.uptime_seconds / 3600);
+        const mins = Math.floor((data.uptime_seconds % 3600) / 60);
+        document.getElementById('server-uptime').textContent = `System Uptime: ${hrs}h ${mins}m`;
+
+      } catch (e) {
+        console.error("System fetch error", e);
+      }
+    }
+
+    // --- CONTAINERS ---
+    async function fetchContainers() {
+      try {
+        const res = await fetch('/api/containers');
+        if (!res.ok) return;
+        const containers = await res.json();
+
+        const tbody = document.getElementById('containers-tbody');
+        const select = document.getElementById('log-container-select');
+        tbody.innerHTML = '';
+        select.innerHTML = '<option value="">Select a container...</option>';
+
+        containers.forEach(c => {
+          const isUp = c.status.toLowerCase().includes('up');
+          const badgeClass = isUp ? 'badge-green' : 'badge-red';
+          
+          tbody.innerHTML += `
+            <tr>
+              <td class="text-mono"><strong>${c.name}</strong></td>
+              <td><span class="badge ${badgeClass}">${c.status}</span></td>
+              <td class="text-mono" style="font-size:0.75rem;">${c.ports}</td>
+              <td>
+                <button onclick="restartContainer('${c.name}')" class="btn btn-warning btn-sm">Restart</button>
+              </td>
+            </tr>
+          `;
+
+          select.innerHTML += `<option value="${c.name}">${c.name}</option>`;
+        });
+
+      } catch (e) {
+        console.error("Containers fetch error", e);
+      }
+    }
+
+    async function restartContainer(name) {
+      if (!confirm(`Are you sure you want to restart ${name}?`)) return;
+      await fetch(`/api/containers/${name}/restart`, { method: 'POST' });
+      setTimeout(fetchContainers, 2000);
+    }
+
+    // Log Streaming via SSE
+    document.getElementById('log-container-select').addEventListener('change', (e) => {
+      const name = e.target.value;
+      const term = document.getElementById('log-terminal');
+      term.textContent = '';
+      if (logEventSource) logEventSource.close();
+
+      if (!name) return;
+      term.textContent = `Connecting to stream logs for ${name}...\n`;
+
+      logEventSource = new EventSource(`/api/containers/${name}/logs`);
+      logEventSource.onmessage = (ev) => {
+        const data = JSON.parse(ev.data);
+        if (data.log) {
+          term.textContent += data.log + '\n';
+          term.scrollTop = term.scrollHeight;
+        }
+      };
+    });
+
+    // --- CLEAN MAIN USERS TABLE ---
+    async function fetchUsersAndAnalytics() {
+      try {
+        const res = await fetch('/api/users');
+        if (!res.ok) return;
+        const data = await res.json();
+        const summary = data.summary;
+        const users = data.users;
+
+        // Update Summary Cards
+        document.getElementById('sum-users').textContent = summary.total_users;
+        document.getElementById('sum-active-users').textContent = summary.active_users_24h;
+        document.getElementById('sum-chats').textContent = summary.total_chats;
+        document.getElementById('sum-messages').textContent = summary.total_messages;
+        document.getElementById('sum-tokens').textContent = summary.total_tokens_k ? `${summary.total_tokens_k} tokens` : `${summary.total_tokens.toLocaleString()} tokens`;
+
+        // Populate Clean Table
+        const tbody = document.getElementById('users-analytics-tbody');
+        tbody.innerHTML = '';
+
+        if (users.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="6">No users found.</td></tr>';
+          return;
+        }
+
+        users.forEach(u => {
+          const roleBadge = u.role === 'admin' ? 'badge-blue' : (u.role === 'user' ? 'badge-green' : 'badge-yellow');
+          const lastActiveStr = u.last_active ? new Date(u.last_active * 1000).toLocaleString() : 'N/A';
+
+          tbody.innerHTML += `
+            <tr>
+              <td>
+                <a onclick="openUserModal('${u.id}')" class="user-click-link">🔍 ${u.name}</a><br/>
+                <span style="font-size:0.75rem; color:var(--text-muted);">${u.email}</span>
+              </td>
+              <td><span class="badge ${roleBadge}">${u.role}</span></td>
+              <td><strong>${u.chats_count} chats</strong></td>
+              <td class="text-mono" style="color:var(--accent-purple); font-weight:700;">${u.tokens_k || u.estimated_tokens} tokens</td>
+              <td style="font-size:0.75rem;">${lastActiveStr}</td>
+              <td>
+                <div style="display:flex; gap:0.3rem;">
+                  <select onchange="updateRole('${u.id}', this.value)" class="form-control" style="width:auto; padding: 0.2rem 0.4rem; font-size:0.75rem;">
+                    <option value="user" ${u.role === 'user' ? 'selected' : ''}>User</option>
+                    <option value="admin" ${u.role === 'admin' ? 'selected' : ''}>Admin</option>
+                    <option value="pending" ${u.role === 'pending' ? 'selected' : ''}>Pending</option>
+                  </select>
+                  <button onclick="deleteUser('${u.id}')" class="btn btn-danger btn-sm" style="padding:0.2rem 0.4rem;">Delete</button>
+                </div>
+              </td>
+            </tr>
+          `;
+        });
+      } catch (e) {
+        console.error("Users fetch error", e);
+      }
+    }
+
+    // --- FULL USER CONVERSATION & TOKEN INSPECTOR MODAL ---
+    async function openUserModal(userId) {
+      const modal = document.getElementById('user-modal-overlay');
+      modal.style.display = 'flex';
+      const tbody = document.getElementById('modal-chats-tbody');
+      tbody.innerHTML = '<tr><td colspan="5">Loading conversation history...</td></tr>';
+
+      try {
+        const res = await fetch(`/api/users/${userId}/chats`);
+        if (!res.ok) return;
+        const data = await res.json();
+        const u = data.user;
+        const chats = data.chats;
+        currentModalUserChats = chats;
+
+        document.getElementById('modal-user-name').textContent = u.name;
+        document.getElementById('modal-user-email').textContent = u.email;
+        document.getElementById('modal-user-role').textContent = u.role;
+        document.getElementById('modal-user-total-tokens').textContent = `${u.total_tokens_k} tokens`;
+        document.getElementById('modal-user-total-chats').textContent = u.chats_count;
+        document.getElementById('modal-user-total-msgs').textContent = u.messages_count;
+
+        let totalP = 0;
+        let totalC = 0;
+        chats.forEach(c => {
+          totalP += c.prompt_tokens;
+          totalC += c.completion_tokens;
+        });
+        document.getElementById('modal-user-pc-breakdown').innerHTML = `
+          <span style="color:var(--text-muted);">In: ${totalP.toLocaleString()}</span> | 
+          <span style="color:var(--accent-purple);">Out: ${totalC.toLocaleString()}</span>
+        `;
+
+        tbody.innerHTML = '';
+        if (chats.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="5">No conversation history for this user.</td></tr>';
+          return;
+        }
+
+        chats.forEach((c, idx) => {
+          const dateStr = new Date(c.updated_at * 1000).toLocaleString();
+          const promptPreview = c.first_prompt ? `<div style="font-size:0.75rem; color:var(--text-muted); margin-top:0.25rem; word-break:break-word;">💬 <em>"${c.first_prompt}"</em></div>` : '';
+
+          tbody.innerHTML += `
+            <tr>
+              <td style="max-width:300px;">
+                <a onclick="openTranscriptModal(${idx})" class="user-click-link" style="font-size:0.9rem;">${c.title}</a>
+                ${promptPreview}
+              </td>
+              <td style="font-size:0.75rem;">${dateStr}</td>
+              <td><strong>${c.messages_count} msgs</strong></td>
+              <td>
+                <div style="font-size:0.75rem; font-family:var(--font-mono); font-weight:600; color:var(--primary); margin-bottom:0.25rem;">
+                  ${c.total_tokens_k} / ${(c.context_limit / 1024).toFixed(1)}k tokens (${c.context_percent}%)
+                </div>
+                <div class="progress-bar" style="margin-top:0;">
+                  <div class="progress-fill purple" style="width: ${c.context_percent}%;"></div>
+                </div>
+              </td>
+              <td>
+                <button onclick="openTranscriptModal(${idx})" class="btn btn-primary btn-sm" style="padding:0.25rem 0.5rem; font-size:0.75rem;">👁 View Full Chat</button>
+              </td>
+            </tr>
+          `;
+        });
+      } catch (e) {
+        console.error("User modal error", e);
+      }
+    }
+
+    function closeUserModal() {
+      document.getElementById('user-modal-overlay').style.display = 'none';
+    }
+
+    // --- FULL CHAT TRANSCRIPT MODAL ---
+    function openTranscriptModal(chatIndex) {
+      const chat = currentModalUserChats[chatIndex];
+      if (!chat) return;
+
+      document.getElementById('transcript-modal-overlay').style.display = 'flex';
+      document.getElementById('transcript-chat-title').textContent = chat.title;
+      document.getElementById('transcript-chat-meta').textContent = `Messages: ${chat.messages_count} | Tokens: ${chat.total_tokens_k} (Prompt: ${chat.prompt_tokens_k}, Output: ${chat.completion_tokens_k})`;
+
+      const container = document.getElementById('transcript-messages-body');
+      container.innerHTML = '';
+
+      if (!chat.full_messages || chat.full_messages.length === 0) {
+        container.innerHTML = '<p style="color: var(--text-muted); padding: 1rem;">No message text recorded in this chat.</p>';
+        return;
+      }
+
+      chat.full_messages.forEach(m => {
+        const isUser = m.role === 'user';
+        const bubbleClass = isUser ? 'chat-bubble-user' : 'chat-bubble-assistant';
+        const roleLabel = isUser ? '<span class="chat-role-label chat-role-user">👤 USER PROMPT</span>' : '<span class="chat-role-label chat-role-assistant">🤖 AI MODEL RESPONSE</span>';
+        
+        container.innerHTML += `
+          <div class="chat-bubble ${bubbleClass}">
+            ${roleLabel}
+            <div>${escapeHtml(m.content)}</div>
+          </div>
+        `;
+      });
+
+      container.scrollTop = 0;
+    }
+
+    function closeTranscriptModal() {
+      document.getElementById('transcript-modal-overlay').style.display = 'none';
+    }
+
+    function escapeHtml(text) {
+      if (!text) return '';
+      return text
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    async function updateRole(userId, newRole) {
+      await fetch(`/api/users/${userId}/role`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role: newRole })
+      });
+      fetchUsersAndAnalytics();
+    }
+
+    async function deleteUser(userId) {
+      if (!confirm("Are you sure you want to delete this user account?")) return;
+      await fetch(`/api/users/${userId}`, { method: 'DELETE' });
+      fetchUsersAndAnalytics();
+    }
+
+    // --- MODELS ---
+    async function fetchModels() {
+      try {
+        const res = await fetch('/api/models');
+        if (!res.ok) return;
+        const models = await res.json();
+        const tbody = document.getElementById('models-tbody');
+        tbody.innerHTML = '';
+
+        models.forEach(m => {
+          tbody.innerHTML += `
+            <tr>
+              <td class="text-mono"><strong>${m.name}</strong></td>
+              <td>${m.size_gb} GB</td>
+              <td>${m.quantization || 'N/A'}</td>
+              <td>${m.format || 'gguf'}</td>
+            </tr>
+          `;
+        });
+      } catch (e) {
+        console.error("Models fetch error", e);
+      }
+    }
+
+    async function runSpeedTest() {
+      const btn = document.getElementById('speed-test-btn');
+      const div = document.getElementById('speed-test-results');
+      btn.disabled = true;
+      btn.textContent = 'Testing...';
+      div.innerHTML = '<p style="color: var(--primary);">Running GPU inference benchmark (tokens/sec)...</p>';
+
+      try {
+        const res = await fetch('/api/token-speed');
+        const d = await res.json();
+        div.innerHTML = `
+          <div style="background: var(--bg-main); padding: 1rem; border-radius: 8px; border: 1px solid var(--border-color); margin-top: 1rem;">
+            <div style="font-size: 1.5rem; font-weight: 700; color: var(--accent-green);">${d.generation_speed} tokens/sec</div>
+            <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.5rem;">
+              Generated ${d.tokens_generated} tokens in ${d.total_time_ms} ms using <strong>${d.model}</strong>.
+            </div>
+          </div>
+        `;
+      } catch (e) {
+        div.innerHTML = `<p style="color: var(--accent-red);">Speed test failed: ${e.message}</p>`;
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Run Speed Test';
+      }
+    }
+
+    // --- CONFIG ---
+    async function fetchConfig() {
+      try {
+        const res = await fetch('/api/config');
+        if (!res.ok) return;
+        const config = await res.json();
+        const container = document.getElementById('config-fields-container');
+        container.innerHTML = '';
+
+        for (const [key, val] of Object.entries(config)) {
+          container.innerHTML += `
+            <div class="form-group">
+              <label>${key}</label>
+              <input type="text" name="${key}" class="form-control text-mono" value="${val}" />
+            </div>
+          `;
+        }
+      } catch (e) {
+        console.error("Config fetch error", e);
+      }
+    }
+
+    document.getElementById('config-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const formData = new FormData(e.target);
+      const config = {};
+      formData.forEach((val, key) => config[key] = val);
+
+      const res = await fetch('/api/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ config })
+      });
+
+      if (res.ok) {
+        alert("Configuration saved successfully!");
+      } else {
+        alert("Failed to save configuration.");
+      }
+    });
+
+    // Check auth on page load
+    checkAuth();
+  </script>
+</body>
+</html>
