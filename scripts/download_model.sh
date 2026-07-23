@@ -38,19 +38,20 @@ echo -e "${CYAN}║           OfflineGPT - AI Model Downloader               ║
 echo -e "${CYAN}╚═══════════════════════════════════════════════════════════╝${NC}"
 echo ""
 
-# Pre-configured model options (all Q4_K_M for 12GB VRAM)
+# Pre-configured model options (all Q4_K_M for efficient VRAM)
 declare -A MODELS
-MODELS["1,name"]="Qwen2.5-7B-Instruct (Recommended - Best overall)"
-MODELS["1,url"]="https://huggingface.co/bartowski/Qwen2.5-7B-Instruct-GGUF/resolve/main/Qwen2.5-7B-Instruct-Q4_K_M.gguf"
-MODELS["1,file"]="Qwen2.5-7B-Instruct-Q4_K_M.gguf"
+MODELS["1,name"]="Phi-4-mini-instruct (Recommended - Microsoft 3.8B Fast & Accurate)"
+MODELS["1,url"]="https://huggingface.co/unsloth/phi-4-mini-instruct-GGUF/resolve/main/phi-4-mini-instruct-Q4_K_M.gguf"
+MODELS["1,file"]="phi-4-mini-instruct-Q4_K_M.gguf"
 
-MODELS["2,name"]="Llama-3.1-8B-Instruct (Meta's latest)"
-MODELS["2,url"]="https://huggingface.co/bartowski/Meta-Llama-3.1-8B-Instruct-GGUF/resolve/main/Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf"
-MODELS["2,file"]="Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf"
+MODELS["2,name"]="Qwen2.5-7B-Instruct (Alibaba 7B)"
+MODELS["2,url"]="https://huggingface.co/bartowski/Qwen2.5-7B-Instruct-GGUF/resolve/main/Qwen2.5-7B-Instruct-Q4_K_M.gguf"
+MODELS["2,file"]="Qwen2.5-7B-Instruct-Q4_K_M.gguf"
 
-MODELS["3,name"]="Mistral-7B-Instruct-v0.3 (Fast & efficient)"
-MODELS["3,url"]="https://huggingface.co/TheBloke/Mistral-7B-Instruct-v0.2-GGUF/resolve/main/mistral-7b-instruct-v0.2.Q4_K_M.gguf"
-MODELS["3,file"]="mistral-7b-instruct-v0.2.Q4_K_M.gguf"
+MODELS["3,name"]="Llama-3.1-8B-Instruct (Meta's 8B)"
+MODELS["3,url"]="https://huggingface.co/bartowski/Meta-Llama-3.1-8B-Instruct-GGUF/resolve/main/Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf"
+MODELS["3,file"]="Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf"
+
 
 # If user provided argument, check if it's a URL or choice number
 if [ -n "$1" ]; then

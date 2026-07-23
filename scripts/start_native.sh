@@ -21,7 +21,7 @@ fi
 CHAT_PORT="${PORT:-67}"
 DASH_PORT="${DASHBOARD_PORT:-68}"
 DASH_PWD="${DASHBOARD_PASSWORD:-admin123}"
-MODEL="${MODEL_FILE:-Qwen2.5-7B-Instruct-Q4_K_M.gguf}"
+MODEL="${MODEL_FILE:-phi4-mini}"
 
 mkdir -p "$PROJECT_ROOT/data/pids" "$PROJECT_ROOT/data/logs"
 
