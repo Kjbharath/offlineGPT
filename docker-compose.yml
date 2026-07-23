@@ -1,0 +1,116 @@
+# ============================================================
+# OfflineGPT - Docker Compose Configuration
+# ============================================================
+# Air-gapped, self-hosted AI chat server
+# Runs llama-server (C++ GPU engine) + Open WebUI
+# ============================================================
+
+services:
+
+  # ---------------------------------------------------------
+  # BACKEND: Ollama GPU Engine
+  # ---------------------------------------------------------
+  ollama:
+    image: ollama/ollama:latest
+    container_name: offlinegpt-ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    environment:
+      - OLLAMA_NUM_PARALLEL=4
+      - OLLAMA_MAX_LOADED_MODELS=1
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    volumes:
+      - ./models:/root/.ollama/models
+    networks:
+      - offlinegpt-net
+
+  # ---------------------------------------------------------
+  # FRONTEND: Open WebUI (the chat interface)
+  # Provides the ChatGPT-style web UI users will interact with
+  # ---------------------------------------------------------
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: offlinegpt-webui
+    restart: unless-stopped
+
+    # Start alongside ollama
+    depends_on:
+      - ollama
+
+    # Map container port 8080 to the host port (default 67)
+    ports:
+      - "0.0.0.0:${PORT:-67}:8080"
+
+    # Persistent storage and OfflineGPT static branding assets
+    # IMPORTANT: Must mount to BOTH /app/build/static/ AND /app/backend/open_webui/static/
+    # because Open WebUI copies from build→static on startup, overwriting our files.
+    volumes:
+      - open-webui-data:/app/backend/data
+
+    environment:
+      # --- Connection to Ollama GPU Engine ---
+      - OLLAMA_BASE_URL=http://offlinegpt-ollama:11434
+      - ENABLE_OLLAMA_API=true
+
+      # --- Disable features that need internet ---
+      - ENABLE_RAG_WEB_SEARCH=false
+      - ENABLE_IMAGE_GENERATION=false
+
+      # --- User management & Branding ---
+      - ENABLE_SIGNUP=${ENABLE_SIGNUP:-true}
+      - WEBUI_SECRET_KEY=${WEBUI_SECRET_KEY:-change-me}
+      - WEBUI_NAME=Open WebUI
+      - DEFAULT_USER_ROLE=user
+      - MODEL_FILTER_ENABLED=false
+      - ENABLE_MODEL_FILTER=false
+      - DEFAULT_MODELS=qwen2.5-7b:latest
+      - ENABLE_COMMUNITY_SHARING=false
+
+    networks:
+      - offlinegpt-net
+
+  # ---------------------------------------------------------
+  # ADMIN DASHBOARD: Management & Monitoring UI
+  # ---------------------------------------------------------
+  dashboard:
+    build: ./dashboard
+    container_name: offlinegpt-dashboard
+    restart: unless-stopped
+    ports:
+      - "0.0.0.0:${DASHBOARD_PORT:-68}:8000"
+    environment:
+      - DASHBOARD_PASSWORD=${DASHBOARD_PASSWORD:-admin123}
+      - OLLAMA_URL=http://offlinegpt-ollama:11434
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu, utility]
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - open-webui-data:/data:ro
+      - ./.env:/config/.env
+    networks:
+      - offlinegpt-net
+
+
+# ---------------------------------------------------------
+# Persistent storage (survives container restarts)
+# ---------------------------------------------------------
+volumes:
+  open-webui-data:
+    name: offlinegpt-webui-data
+
+networks:
+  offlinegpt-net:
+    name: offlinegpt-network
+
