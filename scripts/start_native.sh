@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # ============================================================
-# OfflineGPT — Native Start Launcher (No-Docker)
+# OfflineGPT — Native Start Launcher (llama.cpp Backend)
 # ============================================================
-# Launches Ollama, Open WebUI, and Admin Dashboard natively in background
+# Launches llama-server (llama.cpp), Open WebUI, and Admin Dashboard natively
 # ============================================================
 
 set -e
@@ -21,12 +21,20 @@ fi
 CHAT_PORT="${PORT:-67}"
 DASH_PORT="${DASHBOARD_PORT:-68}"
 DASH_PWD="${DASHBOARD_PASSWORD:-admin123}"
-MODEL="${MODEL_FILE:-phi4-mini}"
+MODEL="${MODEL_FILE:-microsoft_Phi-4-mini-instruct-Q4_K_M.gguf}"
+
+# Fallback model if exact file is not present
+if [ ! -f "$PROJECT_ROOT/models/$MODEL" ]; then
+    FOUND_GGUF=$(find "$PROJECT_ROOT/models" -name "*.gguf" | head -n 1)
+    if [ -n "$FOUND_GGUF" ]; then
+        MODEL=$(basename "$FOUND_GGUF")
+    fi
+fi
 
 mkdir -p "$PROJECT_ROOT/data/pids" "$PROJECT_ROOT/data/logs"
 
 echo "============================================================"
-echo "🚀 Starting OfflineGPT (Native Portable Deployment)"
+echo "🚀 Starting OfflineGPT (llama.cpp Native Backend)"
 echo "============================================================"
 
 # Check venv
@@ -37,26 +45,32 @@ fi
 
 source "$PROJECT_ROOT/venv/bin/activate"
 
-# 1. Start Ollama AI Engine
-echo "🧠 [1/3] Starting Ollama AI Engine (Port 11434)..."
-export OLLAMA_HOST="0.0.0.0:11434"
-export OLLAMA_MODELS="$PROJECT_ROOT/models"
+# 1. Start llama-server (llama.cpp C++ GPU engine)
+echo "🧠 [1/3] Starting llama.cpp Server (Port 8080, Model: ${MODEL})..."
 export LD_LIBRARY_PATH="$PROJECT_ROOT/bin/lib/ollama:$LD_LIBRARY_PATH"
 
-if [ -f "$PROJECT_ROOT/bin/ollama" ]; then
-    nohup "$PROJECT_ROOT/bin/ollama" serve > "$PROJECT_ROOT/data/logs/ollama.log" 2>&1 &
-    echo $! > "$PROJECT_ROOT/data/pids/ollama.pid"
-    echo "   Ollama started (PID: $(cat "$PROJECT_ROOT/data/pids/ollama.pid"))"
+if [ -f "$PROJECT_ROOT/bin/llama-server" ]; then
+    nohup "$PROJECT_ROOT/bin/llama-server" \
+      -m "$PROJECT_ROOT/models/$MODEL" \
+      -c "${CONTEXT_SIZE:-8192}" \
+      -ngl 99 \
+      --port 8080 \
+      --host 0.0.0.0 > "$PROJECT_ROOT/data/logs/llama.log" 2>&1 &
+    echo $! > "$PROJECT_ROOT/data/pids/llama.pid"
+    echo "   llama-server started (PID: $(cat "$PROJECT_ROOT/data/pids/llama.pid"))"
 else
-    echo "❌ Binary ./bin/ollama not found!"
+    echo "❌ Binary ./bin/llama-server not found!"
     exit 1
 fi
 
-# 2. Start Open WebUI Chat Interface
+# 2. Start Open WebUI Chat Interface connected to llama-server OpenAI API
 echo "💬 [2/3] Starting Open WebUI Chat Interface (Port ${CHAT_PORT})..."
 export DATA_DIR="$PROJECT_ROOT/data"
 export WEBUI_SECRET_KEY="${WEBUI_SECRET_KEY:-OfflineGPT-SecureKey}"
-export OLLAMA_BASE_URL="http://127.0.0.1:11434"
+export OPENAI_API_BASE_URL="http://127.0.0.1:8080/v1"
+export OPENAI_API_KEY="none"
+export ENABLE_OLLAMA_INTEGRATION="false"
+export ENABLE_OPENAI_INTEGRATION="true"
 export ENABLE_SIGNUP="${ENABLE_SIGNUP:-true}"
 export DEFAULT_USER_ROLE="user"
 export WEBUI_NAME="Open WebUI"
@@ -68,7 +82,7 @@ echo "   Open WebUI started (PID: $(cat "$PROJECT_ROOT/data/pids/webui.pid"))"
 # 3. Start Admin Dashboard
 echo "🎛️ [3/3] Starting Admin Dashboard (Port ${DASH_PORT})..."
 export DASHBOARD_PASSWORD="$DASH_PWD"
-export OLLAMA_URL="http://127.0.0.1:11434"
+export LLAMA_SERVER_URL="http://127.0.0.1:8080"
 export WEBUI_DB_PATH="$PROJECT_ROOT/data/webui.db"
 export ENV_FILE_PATH="$PROJECT_ROOT/.env"
 
@@ -78,12 +92,12 @@ echo "   Admin Dashboard started (PID: $(cat "$PROJECT_ROOT/data/pids/dashboard.
 
 echo ""
 echo "============================================================"
-echo "🎉 OfflineGPT Services Started Successfully!"
+echo "🎉 OfflineGPT Services Started Successfully! (llama.cpp Backend)"
 echo "============================================================"
-echo "💬 User Chat UI:       http://localhost:${CHAT_PORT} (or http://ai.local:${CHAT_PORT})"
-echo "🎛️ Admin Dashboard:    http://localhost:${DASH_PORT} (or http://ai.local:${DASH_PORT})"
-echo "🧠 Ollama API Engine:   http://localhost:11434"
+echo "💬 User Chat UI:         http://localhost:${CHAT_PORT} (or http://ai.local:${CHAT_PORT})"
+echo "🎛️ Admin Dashboard:      http://localhost:${DASH_PORT} (or http://ai.local:${DASH_PORT})"
+echo "🧠 llama.cpp API Engine: http://localhost:8080"
 echo "============================================================"
-echo "To stop services:      bash scripts/stop_native.sh"
-echo "To view logs:          tail -f data/logs/*.log"
+echo "To stop services:        bash scripts/stop_native.sh"
+echo "To view logs:            tail -f data/logs/*.log"
 echo "============================================================"

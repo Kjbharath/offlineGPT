@@ -9,8 +9,9 @@
 - ❌ **Zero Docker Required** — Runs 100% natively on Linux
 - ❌ **Zero Root / Sudo Required** — Runs entirely inside your user home directory
 - ✅ **100% Offline Air-Gapped** — Includes pre-cached Python `.whl` packages and portable binaries
-- ✅ **NVIDIA GPU Acceleration** — Uses standalone Ollama binary with CUDA libraries
-- ✅ **Complete Feature Parity** — Chat Interface (Port 67) + Admin Dashboard (Port 68)
+- ✅ **llama.cpp (llama-server) C++ Engine** — Direct GGUF model execution with CUDA GPU layer offloading (`-ngl 99`)
+- ✅ **Complete Feature Parity** — Chat Interface (Port 67) + Admin Dashboard (Port 68) + llama-server (Port 8080)
+
 
 ---
 

@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
 # ============================================================
-# OfflineGPT — Native Stop Script (No-Docker)
-# ============================================================
-# Stops all running native OfflineGPT background processes
+# OfflineGPT — Native Stop Script (llama.cpp Backend)
 # ============================================================
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -30,8 +28,9 @@ if [ -d "$PID_DIR" ]; then
 fi
 
 # Kill any remaining instances owned by user
-pkill -f "bin/ollama serve" 2>/dev/null || true
+pkill -f "llama-server" 2>/dev/null || true
 pkill -f "open-webui serve" 2>/dev/null || true
 pkill -f "dashboard/app.py" 2>/dev/null || true
+pkill -f "ollama serve" 2>/dev/null || true
 
 echo "✅ All native OfflineGPT services stopped."
